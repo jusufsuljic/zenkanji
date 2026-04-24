@@ -1,8 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Kanji, KanjiExample, Vocabulary, VocabularyExample } from "../types";
+import { getActiveGeminiApiKey } from "./aiSettingsService";
 
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+const getAiClient = (userId?: string) => {
+  const geminiApiKey = getActiveGeminiApiKey(userId);
+  return geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+};
 
 const withTimeout = async <T,>(promise: Promise<T>, timeoutMessage: string, timeoutMs = 12000) => {
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -12,7 +15,11 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMessage: string, time
   return Promise.race([promise, timeoutPromise]);
 };
 
-export const generateKanjiExamples = async (kanji: Pick<Kanji, 'character' | 'meaning' | 'onReadings' | 'kunReadings'>) => {
+export const generateKanjiExamples = async (
+  kanji: Pick<Kanji, 'character' | 'meaning' | 'onReadings' | 'kunReadings'>,
+  userId?: string
+) => {
+  const ai = getAiClient(userId);
   if (!ai) {
     return [] as KanjiExample[];
   }
@@ -47,8 +54,10 @@ export const generateKanjiExamples = async (kanji: Pick<Kanji, 'character' | 'me
 };
 
 export const generateVocabularyExamples = async (
-  vocabulary: Pick<Vocabulary, 'word' | 'meaning' | 'furigana' | 'romaji'>
+  vocabulary: Pick<Vocabulary, 'word' | 'meaning' | 'furigana' | 'romaji'>,
+  userId?: string
 ) => {
+  const ai = getAiClient(userId);
   if (!ai) {
     return [] as VocabularyExample[];
   }

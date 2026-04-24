@@ -20,15 +20,7 @@ View your app in AI Studio: https://ai.studio/apps/7a134935-3fea-4ced-8d97-62d31
 1. Install dependencies:
    `npm install`
 2. Create `.env.local` from `.env.example`
-3. Set `VITE_GEMINI_API_KEY` in `.env.local` to your Gemini API key
-4. Run the app:
+3. Run the app:
    `npm run dev`
 
-Example `.env.local`:
-```bash
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-For Netlify, set the same variable name: `VITE_GEMINI_API_KEY`.
-
-Note: this app calls Gemini directly from the browser, so the key is shipped to the client. Use referrer restrictions on the key, or move Gemini calls behind a server/serverless function if you want the key kept private.
+AI example generation is optional. Users can paste their own Gemini API key in the Profile page, where it is stored only in their browser and used for example generation on that device.

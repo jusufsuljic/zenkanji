@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StudyItem } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Hash } from 'lucide-react';
+import { BookOpen, Hash, Loader2, Sparkles } from 'lucide-react';
 import {
   getStudyItemTypeLabel,
   getVocabularyBaseLabel,
@@ -11,18 +11,26 @@ import {
   isVerbVocabulary,
 } from '../lib/studyItems';
 import { DetailField } from './shared/DetailField';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '../lib/AuthContext';
+import { canUseAiExamples, hasAiExampleKey, isAiExamplesEnabled } from '../services/aiSettingsService';
 
 interface StudyItemDetailDialogProps {
   item: StudyItem | null;
   open: boolean;
+  onGenerateExamples?: (item: StudyItem) => Promise<boolean>;
   onOpenChange: (open: boolean) => void;
 }
 
 export const StudyItemDetailDialog: React.FC<StudyItemDetailDialogProps> = ({
   item,
   open,
+  onGenerateExamples,
   onOpenChange,
 }) => {
+  const { user } = useAuth();
+  const [isGeneratingExamples, setIsGeneratingExamples] = useState(false);
+
   if (!item) {
     return null;
   }
@@ -32,6 +40,22 @@ export const StudyItemDetailDialog: React.FC<StudyItemDetailDialogProps> = ({
   const detailsTitle = isKanji(item)
     ? item.character
     : item.word;
+  const aiExamplesEnabled = user ? isAiExamplesEnabled(user.uid) : false;
+  const hasAiKey = user ? hasAiExampleKey(user.uid) : false;
+  const canGenerateExamples = Boolean(user && onGenerateExamples && canUseAiExamples(user.uid));
+
+  const handleGenerateExamples = async () => {
+    if (!onGenerateExamples || !canGenerateExamples || isGeneratingExamples) {
+      return;
+    }
+
+    setIsGeneratingExamples(true);
+    try {
+      await onGenerateExamples(item);
+    } finally {
+      setIsGeneratingExamples(false);
+    }
+  };
 
   const grammarFields = isKanji(item)
     ? [
@@ -224,7 +248,32 @@ export const StudyItemDetailDialog: React.FC<StudyItemDetailDialogProps> = ({
                 </div>
               ) : (
                 <div className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50/90 px-4 py-8 text-center text-sm leading-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-                  No examples available yet for this {getStudyItemTypeLabel(item).toLowerCase()}.
+                  <div>
+                    No examples available yet for this {getStudyItemTypeLabel(item).toLowerCase()}.
+                  </div>
+                  <div className="mt-4 flex flex-col items-center gap-3">
+                    <Button
+                      onClick={handleGenerateExamples}
+                      disabled={!canGenerateExamples || isGeneratingExamples}
+                      className="h-11 rounded-2xl bg-indigo-600 px-5 font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400"
+                    >
+                      {isGeneratingExamples ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Generate Examples
+                    </Button>
+                    <p className="max-w-md text-xs leading-6 text-slate-500 dark:text-slate-400">
+                      {canGenerateExamples
+                        ? 'Uses your Gemini key stored locally on this device.'
+                        : !aiExamplesEnabled
+                          ? 'Enable AI examples in Profile to generate examples for this item.'
+                          : !hasAiKey
+                            ? 'Add your Gemini API key in Profile to generate examples.'
+                            : 'Example generation is unavailable right now.'}
+                    </p>
+                  </div>
                 </div>
               )}
             </section>

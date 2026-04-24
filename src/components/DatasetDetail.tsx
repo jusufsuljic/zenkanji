@@ -38,6 +38,7 @@ interface DatasetDetailProps {
   allItems: StudyItem[];
   onBack: () => void;
   onAddItem: (item: StudyItem) => Promise<void> | void;
+  onGenerateExamples: (item: StudyItem) => Promise<boolean>;
   onRemoveItem: (itemId: string) => void;
 }
 
@@ -72,11 +73,12 @@ export const DatasetDetail: React.FC<DatasetDetailProps> = ({
   allItems,
   onBack,
   onAddItem,
+  onGenerateExamples,
   onRemoveItem,
 }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<StudyItem | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [studyMode, setStudyMode] = useState<
     'none' | 'flashcards' | 'quiz-meaning' | 'quiz-reverse' | 'quiz-writing' | 'quiz-grammar'
   >('none');
@@ -91,6 +93,9 @@ export const DatasetDetail: React.FC<DatasetDetailProps> = ({
   const datasetItems = allItems.filter((item) => datasetItemIds.has(item.id));
   const datasetKanji = datasetItems.filter(isKanji);
   const datasetVocabulary = datasetItems.filter(isVocabulary);
+  const selectedItem = selectedItemId
+    ? datasetItems.find((item) => item.id === selectedItemId) || null
+    : null;
   const collectionItems = filterStudyItems(datasetItems, collectionFilter);
   const studyItems = filterStudyItems(datasetItems, studyScope);
   const studyKanji = studyItems.filter(isKanji);
@@ -282,7 +287,7 @@ export const DatasetDetail: React.FC<DatasetDetailProps> = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {collectionItems.map((item) => (
               <div key={item.id} className="group relative">
-                <StudyItemCard item={item} onClick={() => setSelectedItem(item)} />
+                <StudyItemCard item={item} onClick={() => setSelectedItemId(item.id)} />
                 <Button
                   variant="destructive"
                   size="icon"
@@ -460,7 +465,8 @@ export const DatasetDetail: React.FC<DatasetDetailProps> = ({
       <StudyItemDetailDialog
         item={selectedItem}
         open={!!selectedItem}
-        onOpenChange={(open) => !open && setSelectedItem(null)}
+        onGenerateExamples={onGenerateExamples}
+        onOpenChange={(open) => !open && setSelectedItemId(null)}
       />
 
       <ShareDialog

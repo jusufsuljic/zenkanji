@@ -31,6 +31,7 @@ import {
   hasVocabularyGrammarData,
   inferVocabularyGrammarAnalysis,
 } from './services/grammarService';
+import { canUseAiExamples, shouldAutoGenerateAiExamples } from './services/aiSettingsService';
 import { getKanjiDetails } from './services/kanjiService';
 import { getVocabularyDetails } from './services/vocabularyService';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -158,8 +159,12 @@ export default function App() {
       return;
     }
 
+    if (!shouldAutoGenerateAiExamples(user.uid)) {
+      return;
+    }
+
     try {
-      const examples = await generateKanjiExamples(kanji);
+      const examples = await generateKanjiExamples(kanji, user.uid);
       if (!examples.length) {
         return;
       }
@@ -178,6 +183,7 @@ export default function App() {
 
   const enrichVocabularyInBackground = async (vocabulary: Vocabulary) => {
     const hasGrammarData = hasVocabularyGrammarData(vocabulary);
+    const shouldGenerateExamples = Boolean(user && shouldAutoGenerateAiExamples(user.uid));
 
     if (!user || (vocabulary.examples.length > 0 && hasGrammarData)) {
       return;
@@ -185,9 +191,9 @@ export default function App() {
 
     try {
       let examples = vocabulary.examples;
-      if (!examples.length) {
+      if (!examples.length && shouldGenerateExamples) {
         try {
-          examples = await generateVocabularyExamples(vocabulary);
+          examples = await generateVocabularyExamples(vocabulary, user.uid);
         } catch (error) {
           console.error(`Failed to generate examples for ${vocabulary.word}`, error);
         }
@@ -334,6 +340,61 @@ export default function App() {
     } catch (error) {
       console.error(`Failed to resolve imported vocabulary details for ${item.word}`, error);
       return item;
+    }
+  };
+
+  const generateExamplesForItem = async (item: StudyItem) => {
+    if (!user) {
+      toast.error('Sign in to generate examples.');
+      return false;
+    }
+
+    if (!canUseAiExamples(user.uid)) {
+      toast.error('Enable AI examples and add your Gemini key in Profile first.');
+      return false;
+    }
+
+    try {
+      if (isKanji(item)) {
+        const examples = await generateKanjiExamples(item, user.uid);
+        if (!examples.length) {
+          toast.error('No examples were generated right now.');
+          return false;
+        }
+
+        const enrichedKanji = storageService.updateKanji({
+          ...item,
+          examples,
+        });
+
+        await storageService.saveFirestoreKanji(user.uid, enrichedKanji);
+        syncAllItems();
+        toast.success(`Examples generated for ${item.character}.`);
+        return true;
+      }
+
+      const examples = await generateVocabularyExamples(item, user.uid);
+      const grammarFields = buildVocabularyGrammarFields(item, inferVocabularyGrammarAnalysis(item));
+
+      if (!examples.length) {
+        toast.error('No examples were generated right now.');
+        return false;
+      }
+
+      const enrichedVocabulary = storageService.updateVocabulary({
+        ...item,
+        examples,
+        ...grammarFields,
+      });
+
+      await storageService.saveFirestoreVocabulary(user.uid, enrichedVocabulary);
+      syncAllItems();
+      toast.success(`Examples generated for ${item.word}.`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to generate examples for ${getStudyItemDisplay(item)}`, error);
+      toast.error('Could not generate examples right now.');
+      return false;
     }
   };
 
@@ -557,6 +618,7 @@ export default function App() {
                 allItems={allItems}
                 onBack={() => setSelectedDatasetId(null)}
                 onAddItem={handleAddItemToDataset}
+                onGenerateExamples={generateExamplesForItem}
                 onRemoveItem={handleRemoveItemFromDataset}
               />
             ) : (
