@@ -62,7 +62,9 @@ const isMobileBrowser = () => {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 };
 
-const shouldPreferRedirectSignIn = () => isEmbeddedBrowser() || isMobileBrowser();
+// Prefer popups in normal browsers, including mobile, because redirect sign-in is
+// fragile on non-Firebase-hosted domains when browsers block third-party storage.
+const shouldPreferRedirectSignIn = () => isEmbeddedBrowser();
 
 const getErrorCode = (error: unknown) =>
   typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
@@ -100,7 +102,7 @@ export const signInWithGoogle = async () => {
       const result = await signInWithPopup(auth, googleProvider);
       return result.user;
     } catch (error) {
-      if (shouldRetryWithRedirect(error, popupStartedAt)) {
+      if ((isEmbeddedBrowser() || isMobileBrowser()) && shouldRetryWithRedirect(error, popupStartedAt)) {
         return startGoogleRedirectSignIn();
       }
 
