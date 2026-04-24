@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "nickname": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["nickname", "email"]
+    },
+    "Dataset": {
+      "title": "Dataset",
+      "description": "A collection of Kanji",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "kanjiIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "name", "kanjiIds", "createdAt", "updatedAt"]
+    },
+    "Kanji": {
+      "title": "Kanji",
+      "description": "A single Kanji character with details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "character": { "type": "string" },
+        "meaning": { "type": "string" },
+        "onReadings": { "type": "array", "items": { "type": "string" } },
+        "kunReadings: { "type": "array", "items": { "type": "string" } },
+        "strokeCount": { "type": "number" },
+        "addedAt": { "type": "number" }
+      },
+      "required": ["id", "character", "meaning", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data"
+    },
+    "/users/{userId}/datasets/{datasetId}": {
+      "schema": "Dataset",
+      "description": "User's Kanji collections"
+    },
+    "/users/{userId}/kanji/{kanjiId}": {
+      "schema": "Kanji",
+      "description": "User's saved Kanji details"
+    }
+  }
+}
